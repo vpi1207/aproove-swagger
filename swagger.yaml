@@ -1,0 +1,2975 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Aproove Public API
+  description: |
+    Welcome to the Aproove Public API documentation. The API follows RESTful conventions and is intended for developers to easily
+    and quickly integrate Aproove in their own applications.
+
+    # Introduction
+    // TODO
+    
+    
+    # Authentication
+    To be able to access the resources of Aproove and use the API, you must be a verified user.
+    Aproove supports authentication through Json Web Token ([JWT](https://jwt.io/)) to grant access
+    to resources. The Aproove API is an SSL-only API so all data in transit are encrypted.
+
+    To get your access token, use the <span class="code">/auth</span> endpoint (described [here](#operation/login))
+    and send your credentials. You will be received an access token <span class="code">
+    \<access_token\></span> and a refresh token <span class="code">\<refresh_token\></span>. The access
+    token has a limited validity period: it expires after 15 minutes. Once your token is expired, you will
+    have to ask for a new token using your refresh token. The refresh token never expires, except if you log out
+    explicitly. When your refresh token get disabled, you have to login again to retrieve a new pair of tokens.
+
+    // TO BE CONFIRMED: never expire refresh token or long term (6 (?) months) refresh token then re logging ?
+
+    For security reasons, please be careful while dealing with your tokens, espacially your refresh token
+    as it allows anyone who owns it to autenthicate as your user. 
+    
+    There are two ways to invalidate a refresh token:
+      
+      * When you log out with an access token, the associated refresh token is revoked.
+      * A refresh token can be blacklisted on demand by an administrator.
+
+    Once you get a valid access token, you have to send it to the Aproove server through all your
+    requests by providing it in the Authorization header. As the API is stateless, this token allows
+    Aproove to identify and authenticate the user making the request.
+
+    ```
+      curl -H "Authorization: Bearer <access_token>" https://api.aproove.io/v1/projects
+    ```
+
+servers:
+  - url: https://api.aproove.io/v1
+
+tags:
+  - name: Authentication
+    description: |
+      Here are described the endpoints to retrieve and manage your authentication tokens (access and
+      refresh). See [here](#section/Authentication) for more details about the authentication process.
+  - name: Current User
+    description: // TODO ?
+      
+  - name: Agent
+    description: |
+      An agent is a special server dedicated to files or printing processing and heavy calculations.
+      Each agent server has to be registered to the Aproove Web Server through the admin interface
+      to be connected together.
+  - name: Configuration
+    description: |
+      A configuration for a project is a template ...
+
+      // TO BE COMPLETED
+  - name: Language
+    description: |
+      // TODO
+  - name: Project
+    description: |
+      // TODO
+  - name: Role
+    description: |
+      // TODO
+  - name: Team
+    description: |
+      A team is a tenant inside the Aproove enterprise scheme. A team is composed of a list of users that
+      are member of it. A team has resource limitations in regards to storage (shared storage across the members),
+      quota of proofs per day, quota of project per day.
+
+      // TO BE COMPLETED
+  - name: Upload
+    description: |
+      // TODO
+  - name: User
+    description: |
+      // TODO
+  - name: Workflow
+    description: |
+      // TODO
+
+  - name: Internal Values
+    description: |
+      Here is the list of the internal tags you can use in the parameters of a callback.
+    
+      | Key                           | Description |
+      | ----------------------------- | ----------- |
+      | [project_id]                  | Id of the project |
+      | [project_name]                | Name of the project |
+      | [project_processing_status]   | Status of the processing of the project |
+      | [project_processing_progress] | Progess in % of the processing of the project |
+      | [project_processing_error]    | Error message if an error occured during the processing of the project |
+      | [callback_type]               | 'endpoint' or 'intermediate' |
+      | [flow_id]                     | Id of the current flow |
+      | [flow_name]                   | Name of the current flow |
+      | [flow_version]                | Version of the current flow |
+      | [step_id]                     | Id of the current step |
+      | [step_name]                   | Name of the current step |
+      | [answer_id]                   | Id of the answer received for the task |
+      | [answer_key]                  | Key of the answer received for the task |
+      | [answer_label]                | Label of the answer received for the task |
+      | [task_id]                     | Id of the task |
+      | [task_name]                   | Name of the task |
+      | [task_label]                  | Short text of the task |
+      | [task_text]                   | Long text for the task |
+      | [guest_email]                 | Email of the guest |
+      | [guest_firstname]             | First name of the guest |
+      | [guest_lastname]              | Last name of the guest |
+      | [proof_index]                 | Index of the proof used for the task |
+      | [filename]                    | Name of the file (multiple filenames are separated by a coma) |
+
+
+  # - name: Users & Guests
+  #   description: |
+  #     Aproove does have 2 kinds of possible users in the concept:
+
+  #     *	The regular user has a role (that is a group of privileges ranging from read only to full project manager and admin).
+  #     * The guest user is not a real user as it does not have access at to the interface at all without being invited to it. 
+  #     A guest has a first name, a last name and an email address attributes.
+      
+  #     Both users and guests are grouped into the Contact list of a team or a specific user (team contact or user contact).
+  #     Contacts can be grouped into groups than can belong to a team or a user.
+
+  #     // TO BE COMPLETED
+  # - name: Tasks
+  #   description: // TODO
+  # - name: Proof Routing Flow
+  #   description: // TODO
+
+  
+  # - name: Webhook
+  #   description: // TODO
+
+x-tagGroups:
+  # - name: Concepts
+  #   tags:
+  #     - Teams
+  #     - Users & Guests
+  #     - Tasks
+  #     - Proof Routing Flow
+  #     - Internal Values
+
+  - name: Users Management
+    tags:
+      - Authentication
+      - Current User
+
+  - name: Resources
+    tags:
+      - Agent
+      - Configuration
+      - Language
+      - Project
+      - Role
+      - Team
+      - Upload
+      - User
+      - Workflow
+
+  - name: Additionnal Info
+    tags:
+      - Internal Values
+
+  # - name: Webhooks
+  #   tags:
+  #     - Webhook
+
+paths:
+  /agents:
+    get:
+      summary: List agents
+      description: |
+        Return the list of agents servers attached to the Aproove server. This endpoint is only available
+        in Aproove Executive installations.
+      operationId: listAgents
+      tags:
+        - Agent
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X GET \
+              -i https://api.aproove.io/v1/agents \
+              -H "Authorization: Bearer <access_token>"
+        - lang: Python
+          source: |
+            import requests
+
+            def list_agents(access_token):
+              rq = requests.get(
+                'https://api.aproove.io/v1/agents',            # url
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token) # auth
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            # Assuming the access token was already obtained
+            agents = list_agents(access_token)
+            print('There are', len(agents), ' agents connected to the Aproove server')
+      responses:
+        '200':
+          description: List of agents servers
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/Agents"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+
+  
+  /auth:
+    post:
+      summary: Login
+      description: |
+        Exchange your credentials against an access token and a refresh token.
+      operationId: login
+      tags:
+        - Authentication
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X POST \
+              -i https://api.aproove.io/v1/auth \
+              -H "Content-Type: application/json" \
+              -d @- << EOF
+                {
+                  "login": "msmith@commcomp.com",
+                  "password": "msmith1234"
+                }
+              EOF
+        - lang: Python
+          source: |
+            import requests
+
+            def authenticate(login, password):
+              rq = requests.post(
+                'https://api.aproove.io/v1/auth', # url
+                json={                            # data
+                  'login': login,
+                  'password': password
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            tokens = authenticate('msmith@commcomp.com', 'msmith1234')
+            access_token = tokens['token']
+            refresh_token = tokens['refreshToken']
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/requestBodies/Login'
+      responses:
+        '200':
+          description: Tokens
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/AuthToken"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '403':
+          description: Invalid Login or Password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error403"
+  
+        
+        
+  /auth/refresh:
+    post:
+      summary: Refresh token
+      description: Get a new access token.
+      operationId: refreshToken
+      tags:
+        - Authentication
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X POST \
+              -i https://api.aproove.io/v1/auth/refresh \
+              -H "Content-Type: application/json" \
+              -d @- << EOF
+                {
+                  "refreshToken": "ITQWNCt7Cum71NMgV15YzHXs8msIr1G6",
+                  "userId": 363
+                }
+              EOF
+        - lang: Python
+          source: |
+            import requests
+
+            def refresh_token(id, token):
+              rq = requests.post(
+                'https://api.aproove.io/v1/auth/refresh', # url
+                json={                                    # data
+                  'refreshToken': refresh_token,
+                  'userId': id
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            new_tokens = refresh_token(363, 'ITQWNCt7Cum71NMgV15YzHXs8msIr1G6')
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/requestBodies/RefreshToken'
+      responses:
+        '200':
+          description: Tokens
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/AuthToken"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '403':
+          description: Invalid refresh token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error403"
+
+
+  /configs:
+    get:
+      summary: List configurations
+      description: Return the list of configurations available for the current user.
+      operationId: listConfigs
+      tags:
+        - Configuration
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X GET \
+              -i https://api.aproove.io/v1/configs \
+              -H "Authorization: Bearer <access_token>"
+        - lang: Python
+          source: |
+            import requests
+
+            def list_configs(access_token):
+              rq = requests.get(
+                'https://api.aproove.io/v1/configs',           # url
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token) # auth
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            # Assuming the access token was already obtained
+            my_configs = list_configs(access_token)
+            pdf_config = next(
+              cfg for cfg in my_configs if cfg['name'] == 'PDF'
+            )
+            print('PDF Config has id', pdf_config['id'])
+      responses:
+        '200':
+          description: List of configurations
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/Configs"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+  
+  
+  /languages:
+    get:
+      summary: List languages
+      description: Return the list of available languages.
+      operationId: listLanguages
+      tags:
+        - Language
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X GET \
+              -i https://api.aproove.io/v1/languages \
+              -H "Authorization: Bearer <access_token>"
+        - lang: Python
+          source: |
+            import requests
+
+            def list_languages(access_token):
+              rq = requests.get(
+                'https://api.aproove.io/v1/languages',         # url
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token) # auth
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            # Assuming the access token was already obtained
+            languages = list_languages(access_token)
+            print('There are', len(languages), 'languages')
+      responses:
+        '200':
+          description: List of languages
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/Languages"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+  
+  
+  /logout:
+    post:
+      summary: Logout
+      description: |
+        Log the user out.
+
+        When the user logs out, the refresh token associated with its access token is revoked and it won't be
+        possible to use it anymore to get a new access token. On the other hand, the access token remains valid 
+        after logout util its expiration date.
+      operationId: logout
+      tags:
+        - Authentication
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X POST \
+              -i https://api.aproove.io/v1/logout \
+              -H "Authorization: Bearer <access_token>"
+        - lang: Python
+          source: |
+            import requests
+
+            def logout(access_token):
+              rq = requests.post(
+                'https://api.aproove.io/v1/logout',            # url
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token) # auth
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            # Assuming the access token was already obtained
+            logout(access_token)
+      responses:
+        '200':
+          description: Confirmation
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/OK"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+
+
+  /me:
+    get:
+      summary: Me
+      description: Return the information of the connected user.
+      operationId: me
+      tags:
+        - Current User
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X GET \
+              -i https://api.aproove.io/v1/me \
+              -H "Authorization: Bearer <access_token>"
+        - lang: Python
+          source: |
+            import requests
+
+            def me(access_token):
+              rq = requests.get(
+                'https://api.aproove.io/v1/me',                # url
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token) # auth
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            # Assuming the access token was already obtained
+            my_user = me(access_token)
+            print('my user id is', my_user['id'])
+      responses:
+        '200':
+          description: User
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/User"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+  
+
+  /projects:
+    get:
+      summary: List projects
+      description: Return the list of projects available to the current user.
+      operationId: listProjects
+      tags:
+        - Project
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X GET \
+              -i https://api.aproove.io/v1/projects \
+              -H "Authorization: Bearer <access_token>"
+        - lang: Python
+          source: |
+            import requests
+
+            def list_projects(access_token):
+              rq = requests.get(
+                'https://api.aproove.io/v1/projects',          # url
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token) # auth
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            # Assuming the access token was already obtained
+            my_projects = list_projects(access_token)
+            print('I have', len(my_projects), 'projects')
+      responses:
+        '200':
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/Projects"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+    post:
+      summary: Create project
+      description: Create a new project. The current user will be the creator of the project.
+      operationId: createProject
+      tags:
+        - Project
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X POST \
+              -i https://api.aproove.io/v1/projects \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer <access_token>" \
+              -d @- << EOF
+                {
+                  "name": "MBO Spring",
+                  "configId": 314,
+                  "startDate": "2019-04-15T08:00:00Z",
+                  "deadlineDate": "2019-09-30T18:00:00Z"
+                }
+              EOF
+        - lang: Python
+          source: |
+            import requests
+            import datetime
+
+            API_URL = 'https://api.aproove.io/v1/'
+
+            def call_aproove_api(method, path, body=None, access_token=None)
+              rq = requests.request(
+                method,
+                API_URL + path,
+                json=body,
+                headers={ 
+                  'Authorization': 'Bearer %s' %(access_token)
+                }
+              )
+              if rq.status_code >= 400:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            def list_configs(access_token):
+              return call_aproove_api('GET', '/configs', access_token=access_token)
+
+            def create_project(data, access_token):
+              return call_aproove_api('POST', '/projects', data, access_token=access_token)
+
+            start_date = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+            end_date = start_date + datetime.timedelta(weeks=12)
+
+            # Assuming the access token was already obtained
+            my_configs = list_configs(access_token)
+            pdf_config = next(
+              cfg for cfg in my_configs if cfg['name'] == 'PDF'
+            )
+
+            new_project_body = {
+              'name': 'MBO Spring',
+              'configId': pdf_config['id'],
+              'startDate': start_date.isoformat(),
+              'deadlineDate': end_date.isoformat(),
+              'projectPath': '/2019/MBO',
+              'files': [
+                {
+                  'uri': 'https://www.yourServer.com/2019Spring.pdf',
+                  'realName': '2019Spring.pdf'
+                }
+                {
+                  'uri': 'https://www.yourServer.com/briefing1.pdf',
+                  'realName': 'briefing1.pdf',
+                  'drivePath': '/2019/Briefing/'
+                },
+                {
+                  'uri': 'https://www.yourServer.com/briefing2.pdf',
+                  'realName': 'briefing2.pdf',
+                  'drivePath': '/2019/Briefing/'
+                }
+              ],
+              'metadata': {
+                'callbackURL': 'https://www.yourServer.com/api/callMeBack',
+                'internId': '216',
+                'internCategory': 'Garden'
+              }
+            } 
+
+            new_project = create_project(new_project_body, access_token)
+            print('The id of the new project is', new_project['id'])
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/requestBodies/NewProject'
+      responses:
+        '201':
+          description: Created project
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/Project"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+  
+  /projects/{id}:
+    get:
+      summary: Get project
+      description: Find a project by id.
+      operationId: getProject
+      tags:
+        - Project
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X GET \
+              -i https://api.aproove.io/v1/projects/1649 \
+              -H "Authorization: Bearer <access_token>"
+        - lang: Python
+          source: |
+            import requests
+
+            def get_project(id, access_token):
+              rq = requests.get(
+                'https://api.aproove.io/v1/projects/%s' %(id), # url
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token) # auth
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            # Assuming the access token was already obtained
+            project = get_project(1649, access_token)
+            print('The project name is', project['name'])
+      responses:
+        '200':
+          description: Project
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/Project"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+    patch:
+      summary: Update project
+      description: Update a project by id.
+      operationId: updateProject
+      tags:
+        - Project
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X PATCH \
+              -i https://api.aproove.io/v1/project/2325 \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer <access_token>" \
+              -d @- << EOF
+                {
+                  "name": "MBO Spring New",
+                  "deadlineDate": "2019-11-30T18:00:00Z"
+                }
+              EOF
+        - lang: Python
+          source: |
+            import requests
+
+            def update_project(id, data, access_token):
+              rq = requests.patch(
+                'https://api.aproove.io/v1/projects/%s' %(id), # url
+                json=data,                                     # data
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token) # auth
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            updated_project_body = {
+              'name': 'MBO Spring New',
+              'deadlineDate': '2019-11-30T18:00:00Z',
+              'files': [
+                {
+                  'uri': 'https://www.yourServer.com/2019Spring.pdf',
+                  'realName': '2019Spring.pdf'
+                }
+              ]
+            } 
+
+            # Assuming the access token was already obtained
+            updated_project = update_project(2325, updated_project_body, access_token)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/requestBodies/UpdateProject'
+      responses:
+        '200':
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/Project"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+    delete:
+      summary: Delete project
+      description: Delete a project by id.
+      operationId: deleteProject
+      tags:
+        - Project
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X DELETE \
+              -i https://api.aproove.io/v1/project/2325 \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer <access_token>"
+        - lang: Python
+          source: |
+            import requests
+
+            def delete_project(id, access_token):
+              rq = requests.delete(
+                'https://api.aproove.io/v1/projects/%s' %(id), # url
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token) # auth
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+      
+            # Assuming the access token was already obtained
+            deleted_project = delete_project(2325, access_token)
+      responses:
+        '200':
+          description: Deleted project
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/Project"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+
+  /projects/{id}/pdf-export:
+    post:
+      summary: PDF export
+      description: |
+        Export the proofs of the project as a PDF file. Multiple export options are available to 
+        configure the proofs to export: see details below. This endpoint is only available in Aproove
+        Executive installations.
+      operationId: exportProjectPdf
+      tags:
+        - Project
+      consumes:
+        - application/json
+      produces:
+        - application/json
+        - application/pdf
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X POST \
+              -i https://api.aproove.io/v1/projects/2148/pdf-export \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer <access_token>" \
+              -d @- << EOF
+                {
+                  "userId": 135,
+                  "proofStart": 1,
+                  "proofEnd": 26,
+                  "proofFilterMask": 1
+                }
+              EOF
+        - lang: Python
+          source: |
+            import requests
+
+            def export_pdf(id, options, access_token):
+              rq = requests.post(
+                'https://api.aproove.io/v1/projects/%s/pdf-export' %(id), # url
+                json=options,                                             # data
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token)            # auth
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+            
+            export_options = {
+              'userId': 135,
+              'proofStart': 1,
+              'proofEnd': 26,
+              'proofFilterMask': 1
+            }
+
+            # Assuming the access token was already obtained
+            file_url = export_pdf(2148, export_options, access_token)
+            print('The file can be downloaded at', file_url)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/requestBodies/ExportPdf'
+      responses:
+        '200':
+          description: File
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/FileUrl"
+            application/pdf:
+              schema:
+                type: file
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+      
+
+  /projects/{id}/proofs:
+    get:
+      summary: List proofs
+      description: List the proofs of a project.
+      operationId: listProjectProofs
+      tags:
+        - Project
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X GET \
+              -i https://api.aproove.io/v1/project/2325/proofs \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer <access_token>"
+        - lang: Python
+          source: |
+            import requests
+
+            def list_proofs_project(id, access_token):
+              rq = requests.get(
+                'https://api.aproove.io/v1/projects/%s/proofs' %(id), # url
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token)        # auth
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+      
+            # Assuming the access token was already obtained
+            proofs_project = list_proofs_project(2325, access_token)
+            print('The project has', len(proofs_project), 'proofs')
+      responses:
+        '200':
+          description: List proofs
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/Proofs"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+
+
+  
+
+  /projects/{id}/token:
+    post:
+      summary: Create project token
+      description: |
+        Return an access token to a specific project that can be used within a direct HTTP request call to
+        the Aproove server url.
+        
+        To directly access the project in the Flash interface, use
+
+        ```
+          https://www.yourAprooveServer.com/?guestkey=<project_access_token>
+        ```
+
+        To directly access the project in the HTML 5 viewer, use
+        ```
+          https://www.yourAprooveServer.com/viewer/?guestkey=<project_access_token>
+        ```
+
+        By doing so, you can invite people into a project. See the parameters below to configure the access
+        rights provided through the token.
+      operationId: createProjectToken
+      tags:
+        - Project
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      x-codes-samples:
+        - lang: CURL
+          source: |
+            curl -X POST \
+              -i https://api.aproove.io/v1/projects/2148/tokens \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer <access_token>" \
+              -d @- << EOF
+                {
+                  "proofId": [12564, 12569],
+                  "userId": 135,
+                  "expireDate": "2019-05-12T09:00:00+02",
+                  "languageId": 3
+                  "comparisonView": True,
+                  "sendEmail": True
+                }
+              EOF
+        - lang: Python
+          source: |
+            import requests
+
+            def create_project_token(id, options, access_token):
+              rq = requests.post(
+                'https://api.aproove.io/v1/projects/%s/tokens' %(id), # url
+                json=options,                                         # data
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token)        # auth
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+            
+            token_options = {
+              'proofId': [12564, 12569],
+              'userId': 135,
+              'expireDate': '2019-05-12T09:00:00+02',
+              'languageId': 3
+              'comparisonView': True,
+              'sendEmail': True
+            }
+
+            # Assuming the access token was already obtained
+            token = create_project_token(2148, token_options, access_token)
+            print('The token is', token['token'])
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/requestBodies/NewProjectToken'
+      responses:
+        '200':
+          description: Created Token
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/ProjectToken"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+    delete:
+      summary: Delete project token
+      description: Delete a project token and revoke access granted by it.
+      operationId: deleteProjectToken
+      tags:
+        - Project
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X DELETE \
+              -i https://api.aproove.io/v1/projects/2148/tokens/?? \
+              -H "Authorization: Bearer <access_token>"
+        - lang: Python
+          source: |
+            import requests
+
+            def delete_project_token(project_id, token_id, access_token):
+              rq = requests.request(
+                'DELETE',                                                                  # http method
+                'https://api.aproove.io/v1/projects/%s/tokens/%s' %(project_id, token_id), # url
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token)                             # auth
+                }
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            # Assuming the access token was already obtained
+            delete_project_token(2148, ??, access_token)
+      responses:
+        '200':
+          description: Token
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    type: string
+                    example: OK
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+      
+
+  /projects/{id}/users:
+    get:
+      summary: List users
+      description: List the members of a project.
+      operationId: listProjectUsers
+      tags:
+        - Project
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X GET \
+              -i https://api.aproove.io/v1/project/2325/users \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer <access_token>"
+        - lang: Python
+          source: |
+            import requests
+
+            def list_users_project(id, access_token):
+              rq = requests.get(
+                'https://api.aproove.io/v1/projects/%s/users' %(id), # url
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token)       # auth
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+      
+            # Assuming the access token was already obtained
+            users_project = list_users_project(2325, access_token)
+            print('The project has', len(users_project), 'members')
+      responses:
+        '200':
+          description: List users
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/Users"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+      
+
+  
+
+  
+
+    
+  /roles:
+    get:
+      summary: List roles
+      description: Return the list of available roles.
+      operationId: listRoles
+      tags:
+        - Role
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X GET \
+              -i https://api.aproove.io/v1/roles \
+              -H "Authorization: Bearer <access_token>"
+        - lang: Python
+          source: |
+            import requests
+
+            def list_roles(access_token):
+              rq = requests.get(
+                'https://api.aproove.io/v1/roles',             # url
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token) # auth
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            # Assuming the access token was already obtained
+            roles = list_roles(access_token)
+            print('There are', len(roles), 'roles defined')
+      responses:
+        '200':
+          description: List of roles
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/Roles"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+      
+
+  /teams:
+    get:
+      summary: List teams
+      description: List all the teams. This is only available on Aproove Executive installations.
+      operationId: listTeams
+      tags:
+        - Team
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X GET \
+              -i https://api.aproove.io/v1/teams \
+              -H "Authorization: Bearer <access_token>"
+        - lang: Python
+          source: |
+            import requests
+
+            def list_teams(access_token):
+              rq = requests.get(
+                'https://api.aproove.io/v1/teams',             # url
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token) # auth
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            # Assuming the access token was already obtained
+            teams = list_teams(access_token)
+            print('There are', len(teams), 'teams')
+      responses:
+        '200':
+          description: List of teams
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/Teams"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+
+  /teams/{id}/configs:
+    get:
+      summary: List configurations
+      description: List the configurations available to the team.
+      operationId: listTeamConfigs
+      tags:
+        - Team
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X GET \
+              -i https://api.aproove.io/v1/teams/72/configs \
+              -H "Authorization: Bearer <access_token>"
+        - lang: Python
+          source: |
+            import requests
+
+            def list_team_configs(id, access_token):
+              rq = requests.get(
+                'https://api.aproove.io/v1/teams/%s/configs' %(id), # url
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token)      # auth
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            # Assuming the access token was already obtained
+            team_configs = list_team_configs(access_token)
+            print('There are', len(team_configs), 'configs for the team')
+      responses:
+        '200':
+          description: List of configurations
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/Configs"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+
+  /teams/{id}/time-trackings:
+    get:
+      summary: List time trackings
+      description: |
+        List the time trackings of the team.
+
+        This endpoint is only available in Aproove Executive installations.
+      operationId: listTeamTimeTrackings
+      tags:
+        - Team
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X GET \
+              -i https://api.aproove.io/v1/teams/72/time-trackings?from=2019-03-01T00%3A00%3A00%2B02&to=2019-04-01T00%3A00%3A00%2B02 \
+              -H "Authorization: Bearer <access_token>"
+        - lang: Python
+          source: |
+            import requests
+            import datetime
+            import urllib.parse
+
+            def list_time_trackings(id, from, to, access_token):
+              query = urllib.parse.urlencode({
+                'from': start_date.isoformat(),
+                'to': end_date.isoformat()
+              })
+
+              rq = requests.get(
+                'https://api.aproove.io/v1/teams/%s/time-trackings?%s' %(id, query), # url
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token)                       # auth
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            start_date = datetime.datetime(2019, 3, 1, tzinfo=datetime.timezone.utc)
+            end_date = start_date + datetime.timedelta(weeks=4)
+
+            # Assuming the access token was already obtained
+            time_trackings = list_time_trackings(72, start_date, end_date, access_token)
+      parameters:
+        - in: query
+          name: from
+          example: "2019-03-01T00:00:00+02"
+          schema:
+            type: date string
+          description: |
+            The start date of the range to retrieve, formatted as an [ISO 8601](https://www.iso.org/iso-8601-date-and-time-format.html)
+            string.
+          required: true
+        - in: query
+          name: to
+          example: "2019-04-01T00:00:00+02"
+          schema:
+            type: date string
+          description: |
+            The end date of the range to retrieve, formatted as an [ISO 8601](https://www.iso.org/iso-8601-date-and-time-format.html)
+            string. The time range may not exceed one month.
+          required: true
+        - in: query
+          name: format
+          example: json
+          default: json
+          schema:
+            type: string
+          description: The format of the results. The available formats are json or csv. Default value is json.
+      responses:
+        '200':
+          description: List of time trackings
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/TimeTrackings"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+
+  /teams/{id}/users:
+    get:
+      summary: List users
+      description: |
+        List the members of the team.
+
+        This endpoint is only available in Aproove Executive installations.
+      operationId: listTeamUsers
+      tags:
+        - Team
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X GET \
+              -i https://api.aproove.io/v1/teams/72/users \
+              -H "Authorization: Bearer <access_token>"
+        - lang: Python
+          source: |
+            import requests
+
+            def list_team_users(id, access_token):
+              rq = requests.get(
+                'https://api.aproove.io/v1/teams/%s/users' %(id), # url
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token)    # auth
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            # Assuming the access token was already obtained
+            team_users = list_team_users(access_token)
+            print('There are', len(team_users), 'members in the team')
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/Users"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+
+
+  /upload:
+    post:
+      summary: Send a file
+      description: |
+        Upload a file on the server in a temporary directory and returns the assiociated download link.
+        This can be used for example for temporarily storing a file when creating a project and 
+        providing the download link as the file uri.
+      operationId: upload
+      tags:
+        - Upload
+      consumes:
+        - multipart/form-data
+      parameters:
+        - in: formData
+          name: aprooveFile
+          type: file
+          description: The file to upload.
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            url -X POST \
+              -i https://api.aproove.io/v1/upload \
+              -H "Authorization: Bearer <access_token>"
+              -F "aprooveFile=/path/to/file"
+        # - lang: Python
+        #   source: |
+        #     import requests
+
+        #     def post_file(file, access_token):
+        #       rq = requests.get(
+        #         'https://api.aproove.io/v1/upload' %(id), # url
+        #         headers={
+        #           'Authorization': 'Bearer %s' %(access_token)      # auth
+        #         } 
+        #       )
+        #       if rq.status_code != 200:
+        #         raise Exception(rq.json()['error'])
+        #       return rq.json()['result']
+
+        #     # Assuming the access token was already obtained
+        #     tmp_file = post_file(access_token)
+        #     print('The file download link is', tmp_file)
+      responses:
+        '200':
+          description: 
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/TmpFile"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+
+  /users:
+    get:
+      summary: List users
+      description: |
+        Return the list of users belonging to the team of the current user. The current user should
+        so be a member of team.
+      operationId: listUsers
+      tags:
+        - User
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X GET \
+              -i https://api.aproove.io/v1/users \
+              -H "Authorization: Bearer <access_token>"
+        - lang: Python
+          source: |
+            import requests
+
+            def list_users(access_token):
+              rq = requests.get(
+                'https://api.aproove.io/v1/users',             # url
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token) # auth
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            # Assuming the access token was already obtained
+            languages = list_users(access_token)
+            print('There are', len(users), 'members in my team')
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/Users"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+      
+
+  /users/{id}/configs:
+    get:
+      summary: List configurations
+      description: |
+        List the configurations available to a specific user. If the user is not the current user,
+        admin permissions are required to access the information.
+      operationId: listUserConfigs
+      tags:
+        - User
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X GET \
+              -i https://api.aproove.io/v1/users/363/configs \
+              -H "Authorization: Bearer <access_token>"
+        - lang: Python
+          source: |
+            import requests
+
+            def list_user_configs(id, access_token):
+              rq = requests.get(
+                'https://api.aproove.io/v1/users/%s/configs' %(id), # url
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token)      # auth
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            # Assuming the access token was already obtained
+            user_configs = list_user_configs(363, access_token)
+            print('User has access to', len(user_configs), 'configurations')
+      responses:
+        '200':
+          description: List configurations
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/Configs"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+
+
+  /users/{id}/projects:
+    get:
+      summary: List projects
+      description: |
+        List the projects of a specific user. If the user is not the current user, admin permissions
+        are required to access the information.
+      operationId: listUserProjects
+      tags:
+        - User
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X GET \
+              -i https://api.aproove.io/v1/users/363/projects \
+              -H "Authorization: Bearer <access_token>"
+        - lang: Python
+          source: |
+            import requests
+
+            def list_user_projects(id, access_token):
+              rq = requests.get(
+                'https://api.aproove.io/v1/users/%s/projects' %(id), # url
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token)       # auth
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            # Assuming the access token was already obtained
+            user_projects = list_user_projects(363, access_token)
+            print('User has', len(user_projects), 'projects')
+      responses:
+        '200':
+          description: List projects
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/Projects"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+  
+
+  /users/{id}/teams:
+    get:
+      summary: List teams
+      description: |
+        List the teams the user belongs to. Should return an empty array or an array of size 1.
+        This is only available on Aproove Executive installations.
+      operationId: listUserTeams
+      tags:
+        - User
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X GET \
+              -i https://api.aproove.io/v1/users/363/teams \
+              -H "Authorization: Bearer <access_token>"
+        - lang: Python
+          source: |
+            import requests
+
+            def list_user_teams(id, access_token):
+              rq = requests.get(
+                'https://api.aproove.io/v1/users/%s/teams' %(id), # url
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token)    # auth
+                } 
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            # Assuming the access token was already obtained
+            user_team = list_user_teams(363, access_token)[0]
+            print('User is member of team', user_team['name'])
+      responses:
+        '200':
+          description: List teams
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/Teams"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+
+
+  /workflows/{ref}/revisions/{rev}/chart:
+    get:
+      summary: Get workflow chart
+      description: |
+        Return the chart of the flow identified by its reference and its revision, encoded as a base64 string. To get
+        the reference of a flow, use the flowRef field of the project.
+
+        The restrictions are:
+          * The user has to be an admin to recover the chart of a revision that is a part of a template flow.
+          * The user must be the creator of the project to recover the chart of a revision associated to a project.
+      operationId: getWorkflowChart
+      tags:
+        - Workflow
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X GET \
+              -i https://api.aproove.io/v1/workflows/RF9BoZJovOk8tTJFYgb0zaYoQCpTgOc01Ojt/revisions/1/chart \
+              -H "Authorization: Bearer <access_token>"
+        - lang: Python
+          source: |
+            import requests
+            import base64
+
+            def chart_workflow(reference, revision, access_token):
+              rq = requests.get(
+                'https://api.aproove.io/v1/workflows/%s/revisions/%d/chart' %(reference, revision), # url
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token)                                      # auth
+                }
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            # Assuming the access token was already obtained
+            chart = chart_workflow('RF9BoZJovOk8tTJFYgb0zaYoQCpTgOc01Ojt', 1, access_token)
+            img = base64.b64decode(chart)
+            filename = 'chart.jpg'
+            with open(filename, 'wb') as f:
+              f.write(img)
+      responses:
+        '200':
+          description: Base64-encoded image
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/Chart"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+  /workflows/{ref}/revisions/{rev}/steps:
+    get:
+      summary: List workflow steps
+      description: |
+        Return the list of all steps of the flow identified by its reference and its revision. To get the reference
+        of a flow, use the flowRef field of the project.
+
+        The restrictions are:
+          * The user has to be an admin to recover the chart of a revision that is a part of a template flow.
+          * The user must be the creator of the project to recover the chart of a revision associated to a project.
+      operationId: listWorkflowSteps
+      tags:
+        - Workflow
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      x-code-samples:
+        - lang: CURL
+          source: |
+            curl -X GET \
+              -i https://api.aproove.io/v1/workflows/RF9BoZJovOk8tTJFYgb0zaYoQCpTgOc01Ojt/revisions/1/steps \
+              -H "Authorization: Bearer <access_token>"
+        - lang: Python
+          source: |
+            import requests
+
+            def steps_workflow(reference, revision, access_token):
+              rq = requests.get(
+                'https://api.aproove.io/v1/workflows/%s/revisions/%d/steps' %(reference, revision), # url
+                headers={
+                  'Authorization': 'Bearer %s' %(access_token)                                      # auth
+                }
+              )
+              if rq.status_code != 200:
+                raise Exception(rq.json()['error'])
+              return rq.json()['result']
+
+            # Assuming the access token was already obtained
+            steps = steps_workflow('RF9BoZJovOk8tTJFYgb0zaYoQCpTgOc01Ojt', 1, access_token)
+            print('The steps are', ', '.join([s['name'] for s in steps]))
+      responses:
+        '200':
+          description: Base64-encoded image
+          content:
+            application/json:
+              schema:
+                properties:
+                  result:
+                    $ref: "#/components/schemas/Steps"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error400"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error401"
+      security:
+        - Bearer Authentication: []
+      
+
+
+models:
+  Agent:
+    properties:
+      id:
+        type: integer
+        example: 26
+        description: Agent id.
+      serverName:
+        type: string
+        example: Local
+        description: Name given by the administrator when the agent was added to the Aproove server.
+      version:
+        type: string
+        example: 2.0.0. SVN0071q 64bit
+        description: Version of the agent engine
+      enabled:
+        type: boolean
+        description: Indicates if the agent is enabled or not.
+        example: true
+      lastActivityTime:
+        type: integer
+        example: 1555588903
+        description: Unix timestamp of the last activity of the agent.
+      tempDiskUsage:
+        type: string
+        example: 1985208320/25769799680
+        description: Used space and remaining space (in bytes) on the disk for the temporary folder of the agent. This folder is used by the agent to temporarily store the processed files.
+      jobDiskUsage:
+        type: string
+        example: 326738071552/750050463744
+        description: Used space and remaining space (in bytes) on the disk used by the agent to stored the processed files.
+  Config:
+    required:
+      - id
+    properties:
+      id:
+        type: integer
+        example: 287
+        description: Configuration Id
+      name:
+        type: string
+        example: local-pdf
+        description: Name of the configuration
+      label:
+        type: string
+        example: Local PDF
+        description: Label of the configuration translated in the user language
+      provider:
+        type: sring
+        example: PDF
+        description: Provider defined for the configuration
+  Language:
+    properties:
+      id:
+        type: integer
+        example: 8
+      name:
+        type: string
+        example: English
+      shortName:
+        type: string
+        example: en
+      createdDate:
+        type: datestring
+      modifiedDate:
+        type: datestring
+  Project:
+    required:
+      - id
+      - name
+    properties:
+      id:
+        type: integer
+        example: 863
+      name:
+        type: string
+        example: MBO Project
+      configId:
+        type: integer
+        example: 
+      status:
+        type: string
+      agentStatus:
+        type: string
+      version:
+        type: integer
+  Proof: 
+    id:
+      type: integer
+    index:
+      type: integer
+    status:
+      type: string
+  Role:
+    properties:
+      id:
+        type: integer
+        example: 15
+      name:
+        type: string
+        example: Reviewer
+  Step:
+    properties:
+      id:
+        type: integer
+        example: 36
+      name:
+        type: string
+        example: Reviewing
+  Team:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+  TimeTracking:
+    properties:
+      id:
+        type: integer
+  User:
+    required:
+      - id
+    properties:
+      id:
+        type: integer
+      firstname:
+        type: string
+      lastName:
+        type: string 
+
+components:
+  schemas:
+    Agent:
+      $ref: "#/models/Agent"
+    Agents:
+      type: array
+      items:
+        $ref: "#/components/schemas/Agent"
+    AuthToken:
+      properties:
+        token:
+          type: string
+          example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjM2MywibG9naW4iOiJ0bEBhcHJvb3ZlLmNvbSIsImlzcyI6IjEwLjE0MC4xLjIyIiwiZXhwIjoxNTU3MjE4NDU2fQ.m3DZqvrRJ_cueIXoZRzXcklTK7gVUQqs3DwX_hvmXVU
+        refreshToken:
+          type: string
+          example: ITQWNCt7Cum71NMgV15YzHXs8msIr1G6
+        tokenType:
+          type: string
+          default: bearer
+          example: bearer
+        expires:
+          type: interger
+          example: 1557218456
+    Chart:
+      type: string
+      example: iVBORw0KGgoAAAANSUhEUgAABc0AAAEhCAYAAACtGohmAAA...
+    Config:
+      $ref: "#/models/Config"
+    Configs:
+      type: array
+      items:
+        $ref: "#/components/schemas/Config"
+    FileUrl:
+      type: string
+      example: https://www.yourAprooveServer.com/jobs/pdf/06-03-2019-09-06_CYnJSPNE/12933-FXTD...OTYO.pdf
+    Language:
+      $ref: "#/models/Language"
+    Languages:
+      type: array
+      items:
+        $ref: "#/components/schemas/Language"
+    Project:
+      $ref: "#/models/Project"
+    Projects:
+      type: array
+      items:
+        $ref: "#/components/schemas/Project"
+    ProjectToken:
+      properties:
+        token: string
+        example: hFyRuGBJMoaDq5WZmaKtl4h6fIJhYmZq
+    Proof:
+      $ref: "#/models/Proof"
+    Proofs:
+      type: array
+      items:
+        $ref: "#/components/schemas/Proof"
+    Role:
+      $ref: "#/models/Role"
+    Roles:
+      type: array
+      items:
+        $ref: "#/components/schemas/Role"
+    Step:
+      $ref: "#/models/Step"
+    Steps:
+      type: array
+      items:
+        $ref: "#/components/schemas/Step"
+    Team:
+      $ref: "#/models/Team"
+    Teams:
+      type: array
+      items:
+        $ref: "#/components/schemas/Team"
+    TimeTracking:
+      $ref: "#/models/TimeTracking"
+    TimeTrackings:
+      type: array
+      items: 
+        $ref: "#/components/schemas/TimeTracking"
+    TmpFile:
+      type: string
+      example: http://www.yourAprooveServer.com/download\1CCFDBD3770E39DB2AA470D92512C995\sample.pdf
+    User:
+      $ref: "#/models/User"
+    Users:
+      type: array
+      items:
+        $ref: "#/components/schemas/User"
+    OK:
+      type: string
+      example: OK
+      default: OK
+    Error400:
+      properties:
+        error:
+          properties:
+            code:
+              type: integer
+              default: 400
+            title:
+              type: string
+              default: Bad request
+            message:
+              type: string
+              description: Short description of the error
+            details:
+              type: object
+              description: The detailed explanation of why the request failed
+    Error401:
+      properties:
+        error:
+          properties:
+            code:
+              type: integer
+              description: HTTP code.
+              default: 401
+              example: 401
+            title:
+              type: string
+              description: Reason of the error.
+              default: Unauthorized
+              example: Unauthozized
+            message:
+              type: string
+              descripton: Short description of the error.
+              default: You are not allowed
+              example: You are not allowed
+    Error403:
+      properties:
+        error:
+          properties:
+            code: 
+              type: integer
+              description: HTTP code
+              default: 403
+              example: 403
+            title:
+              type: string
+              description: Reason of the error.
+              default: Forbidden
+              example: Forbidden
+            message:
+              type: string
+              descripton: Short description of the error.
+              example: Invalid Login or Password
+
+  requestBodies:
+    ExportPdf:
+      required:
+        - proofStart
+        - proofEnd
+        - userId
+      properties:
+        proofStart:
+          type: integer or list of integers
+          example: 3
+          description: |
+            proofStart and proofEnd parameters specify which proofs to export. The following combinations
+            are possible:
+
+              *	Export the proofs within a range: set the proofStart parameter with the number of first
+              proof to export, and the proofEnd parameter with the number of the last proof to export.
+              For example, proofStart = 1 and proofEnd = 25 will export all proofs between proof 1 and
+              proof 25 (included).
+
+              * Export a custom selection of proofs: set the proofStart parameter with the numbers of proofs
+              to export in a list, and set the proofEnd parameter to 0. For example, proofStart = [1, 4, 7]
+              and proofEnd = 0 will export proofs 1, 4 and 7.
+        proofEnd:
+          type: integer
+          example: 10
+          description: see proofStart description.
+        userId:
+          type: integer
+          example: 495
+          description: |
+            The user requesting the export. This user will be assigned as the PDF author.
+        proofFilterMask:
+          type: integer
+          example: 2
+          description: |
+            Filter the proofs to export based on their status:
+
+              *	Approved: proofFilterMask = 1
+
+              *	Annoted: proofFilterMask = 2
+
+              *	Rejected: proofFilterMask = 4
+
+              *	No status: proofFilterMask = 8
+
+              *	New status: proofFilterMask = 16
+
+            Those filters can be combined by adding them together. For example, to export the rejected proofs and
+            the annoted proofs, set proofFilterMask to 4 + 2 = 6.
+        orientation:
+          type: string
+          example: P
+          default: P
+          description: |
+            The orientation of the pages in the pdf. The possible values are "P" for Portrait and "L" for Landscape.
+            The default value is P.
+        format:
+          type: string
+          example: a4
+          default: a4
+          description: |
+            The format of the pages in the pdf. The possible values are : "a4", "a3", "letter", "legal", "tabloid", "4a0",
+            "2a0", "a0", "a1", "a2", "a5", "a6", "a7", "a8", "a9", "a10", "b0", "b1", "b2", "b3", "b4", "b5", "b6", "b7",
+            "b8", "b9", "b10", "c0", "c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c10", "juniorlegal", "ledger".
+            The default value is “a4”.
+        fit:
+          type: boolean
+          example: true
+          default: true
+          description: If true, fit the proofs to the given format.
+        notes:
+          type: boolean
+          example: true
+          default: true
+          description: If true, export the notes of the proofs in the PDF too.
+        includeHiddenNotes:
+          type: boolean
+          example: true
+          default: false
+          description: |
+            If the notes should be exported and this parameter is true, then the hidden notes (notes that users hid
+            manually in their review interface) will be included in the PDF too.
+        exportNoteComments:
+          type: boolean
+          example: false
+          default: false
+          description: |
+            If the notes should be exported and this parameter is true, the comments made on notes will be
+            exported too.
+        readerProOptimized:
+          type: boolean
+          example: true
+          default: false
+          description: |
+            If the notes should be exported and this parameter is true, the Aproove internal annotations will
+            be converted into Adobe Acrobat annotations.
+        attachFiles:
+          type: boolean
+          example: false
+          default: false
+          description: |
+            If true, the files attached to notes will be embedded in the PDF. The parameter readerProOptimized
+            has to be set to true too.
+        oneFilePerProof:
+          type: boolean
+          example: false
+          default: false
+          description: |
+            If true, one pdf file will be generated for each proof to export.
+        proofVersion:
+          type: integer
+          example: 0
+          default: -1
+          description: |
+            If there are multiple versions of proofs, this parameter let you specify the version to export.
+            
+            The value -1 stands for "all versions" and the value 0 stands for "the last version". Two cases are possible:
+              
+              *	There is only one proof to export: any version of the proof may be exported. For example, proofVersion = 2
+              will export the version 2 of the proof.
+
+              * There are multiple proofs to export: only the last version (pageVersion = 0) or all versions (pageVersion = -1)
+              may be exported.
+
+            The default value is -1.
+        sendEmail:
+          type: boolean
+          example: true
+          default: false
+          description: |
+            If true, an email will be sent to the user with the download link.
+        bookMode:
+          type: boolean
+          example: false
+          default: false
+          description: |
+            If true, the proofs will be exported as double pages (spreads).
+        download:
+          type: boolean
+          example: true
+          default: false
+          description: |
+            If true, the file will be downloaded automatically. Otherwise, the file url is returned.
+
+         
+
+    
+    Login:
+      required:
+        - login
+        - password
+      properties:
+        login:
+          type: string
+          example: msmith@commcomp.com
+          description: Your login.
+        password:
+          type: string
+          example: msmith1234
+          description: Your password.
+    NewProject:
+      File:
+        required:
+          - uri
+          - realName
+        properties:
+          uri:
+            type: string
+            description: URI to download the file
+            example: https://www.yourServer.com/sample.pdf
+          realName:
+            type: string
+            description: Name to give to the file
+            example: sample.pdf
+          drivePath:
+            type: string
+            description: |
+              If set, then the file is stored in the Drive in the given folder and is not considered as a proof.
+              Otherwise, the file is treated as a proof. Please note that the path has to be compatible with real file
+              systems (no special character allowed). Aproove will create the folder in the Drive if it does not
+              exist yet.
+            example: /2019/Briefing
+      Metadata:
+        type: object
+        description: |
+          The metadata is an object containing an arbitrary set of key:value pairs. Use metadata to store in the project
+          any kind of data you might want to retrieve at some point. For example, those data can be sent back to your 
+          application thanks to a callback action.
+
+          If you specify the following metadata object:
+
+          ```
+          {
+            callbackURL: 'https://www.yourServer.com/api/callMeBack',
+            internId: 216,
+            internCategory: 'Garden'
+          }
+          ```
+
+          Those data will appear in the metadata of the project (Metadata tab in admin interface) and you will be able to use
+          them when setting a callback action.
+
+          [![Metadata tab of the project](./metadata_screen.png)](./metadata_screen.png?target=_blank)
+
+          Thanks to the action/state functionality you can create a callback action triggered when a specific event occured
+          (a proof is approved / rejected, the project is approved / rejected, the project goes the next step of the flow, etc.)
+          and use the information contained in the metadata to set the call to your application.
+
+          [![Action setup](./action_screen.png)](./action_screen.png?target=_blank)
+
+          In the above example, a callback action triggered by the approval of the project is set by specifying the URL to call and
+          the parameters to send to the URL. You can add all the parameters you want directly in the action. Use the syntax
+          DATA[metadataKey] to use the value of the metadata named 'metadataKey'. Moreover, Aproove internal values are available if
+          you need the project status, the project name or any other information coming from Aproove. The full list of internal tags
+          is available [here](#tag/Internal-Values).
+
+          When the project is approved, the action will be triggered and the URL will be called with the parameters submitted as
+          POST data, encoded as a json object in the 'data' parameter.
+
+          Here is a PHP sample code to retrieve the data sent to the URL.
+
+          ```php
+          $dataFromAproove = (array) json_decode($_POST['data']);
+          print_r($dataFromAproove);
+          
+          // Array ( [projectId] => 216 [projectCategory] => Garden [projectName] => MBO Project )
+          ```
+      StepGroup:
+        required:
+          - name
+        properties:
+          name:
+            type: string
+      User:
+        required:
+          - id
+        properties:
+          id:
+            type: integer
+            description: Id of the user
+          roleId:
+            type: integer
+            description: |
+              Id of the role to give to the user in the project. If not set, the role of the user defined by default
+              in the project configuration will be used. Otherwise, the default role will be overridden by the role set
+              here.
+          stepGroups:
+            type: array
+            items:
+              $ref: "#/components/requestBodies/NewProject/StepGroup"
+            description: |
+              Used for dynamically assign different users to the same functional Aproove proof routing flow. All groups sent
+              in this parameter have to be defined before in a step (flow template).
+
+              It’s based on the name of the group so if you send a name that matches multiple groups the user will be added to all
+              those groups.
+      Guest:
+        required:
+          - email
+          - firstname
+          - lastname
+        properties:
+          email:
+            type: string
+            example: mary.smith@example.com
+          firstname:
+            type: string
+            example: Mary
+          lastname:
+            type: string
+            example: Smith
+          stepGroups:
+            type: array
+            items:
+              $ref: "#/components/requestBodies/NewProject/StepGroup"
+            description: |
+              Used for dynamically assign different users to the same functional Aproove proof routing flow. All groups sent
+              in this parameter have to be defined before in a step (flow template).
+
+              It’s based on the name of the group so if you send a name that matches multiple groups the user will be added to all
+              those groups.
+      required:
+        - name
+        - configId
+      properties:
+        name:
+          type: string
+          description: The name of the project
+          example: MBO Project
+        configId:
+          type: integer
+          description: |
+            The id of the configuration to use to create the project. The list of configurations the user is allowed to use
+            can be retrieved with the /configs endpoint.
+          example: 276
+        startDate:
+          type: datestring
+          description: The start date of the project, formatted as an [ISO 8601](https://www.iso.org/iso-8601-date-and-time-format.html) string
+          example: 2019-05-01T18:00:00Z
+        deadlineDate:
+          type: datestring
+          description: The due date of the project, formatted as an [ISO 8601](https://www.iso.org/iso-8601-date-and-time-format.html) string
+          example: 2019-08-01T08:00:00Z
+        files:
+          type: array
+          items:
+            $ref: "#/components/requestBodies/NewProject/File"
+          description: Files to add to the project.
+        projectPath:
+          type: string
+          description: |
+            If set, the project will be placed in the given folder in the project tree. Otherwise, the project will be
+            added at the root level of the project tree. Please note that the path has to be compatible with real file
+            systems (no special character allowed). Aproove will create the folder if it does not exist yet. All the
+            projects created with the samed projectPath will all reside in the same folder. This is only suitable if the
+            team has a tree defined in its congifuration.
+          example: /2019/MBOProject/
+        metadata:
+          $ref: "#/components/requestBodies/NewProject/Metadata"
+        processingStatusChangeCallbackURL:
+          type: string
+          description: |
+            This attribute allows to specify a callback URL to be called when a processing status change occurs in Aproove
+            (related to the current project). So the third-party application knowns exactly when the processing of the project
+            starts / is done / ends in an error state / etc. The progress of the processing of the project is also an
+            information that can be retrieved.
+
+            For example, the callback url could be:
+            
+            https://yourServer.com/callMebackWhenProjectIsReady?jobId=DATA[metadataIdField]&projectProcessingStatus=[project_processing_status]&projectProcessingProgress=[project_processing_progress]
+            
+            In this statement we see the following informations:
+            
+            * The URL : https://yourServer.com/callMeBackWhenProjectIsReady
+            * The custom parameter you can define in the call:
+
+              •	jobId: a custom parameter the third-party application needs to identify what project it is in their system (can be
+              anything, this is up to the API user to specify any of these fields required for his application to process the callback
+              efficiently).
+
+              •	The DATA[metadataIdField] statement is an example of the use of a metadata field sent in the projectMetaData object.
+              And dynamically, Aproove will use the value of this field and substitute it at run time when calling back.
+
+              •	project_processing_status / project_processing_progress: other custom parameters examples, but this time, the value will be
+              substituted by an internal Aproove value (project_processing_status / project_processing_progress). Aproove will interpret as
+              an internal tag because of the [...] syntax. Please read [here](#tag/Internal-Values) to get the list of fields that can be used.
+
+            Please, note that some limits might exist for the URL length. For example, Chrome has a 2MB limit for URLs, and Internet Explorer
+            has a 2083 characters limit. So you should try to keep your URL limited to approximatively 2000 characters. This will ensure the URL
+            works in all clients and server configurations.
+          example: https://yourServer.com/callMebackWhenProjectIsReady?jobId=DATA[metadataIdField]&projectProcessingStatus=[project_processing_status]&projectProcessingProgress=[project_processing_progress]
+        users:
+          type: array
+          items:
+            $ref: "#/components/requestBodies/NewProject/User"
+          description: |
+            Users to add to the project. These users should be members of your team and will be invited after the project creation.
+        guests:
+          type: array
+          items:
+            $ref: "#/components/requestBodies/NewProject/Guest"
+          description:  Guests to add to the project. These guests will be invited after the project creation.
+        book:
+          type: boolean
+          description: Set true if the project is a book (brochure).
+          example: false
+        numberPages:
+          type: integer
+          description: |
+            Force the number of pages in this project. Otherwise, it will take the number of pages of the files sent.
+          example: 20
+        agentId:
+          type: integer
+          description: Id of the agent to use for processing the project.
+          example: 6
+        batchProcessingTimer:
+          type: integer
+          description: |
+            Timer (in seconds) during which the processing agent will wait for other files to be uploaded before starting to process them.
+            Every new file upload will reset this timer and wait for the next one until it reaches the specified value. The purpose is to
+            batch process files VS process each file after each upload to avoid locking down project while agent is processing and thus
+            limiting/optimizing the processing overhead. When this delay is over, the agent will process all uploaded files transferred. 
+            This value is overriding the default timer value stored in the Aproove.
+          example: 45
+    
+    NewProjectToken:
+      Guest:
+        description: |
+          Specify the data of the external guest (not a registered user) that will access the project.
+          Leave this field empty if a userId is specified.
+        required:
+          - email
+          - firstname
+          - lastname
+        properties:
+          email:
+            type: string
+            example: marysmith@commcomp.com
+            description: Email address of the external guest.
+          firstname:
+            type: string
+            example: Mary
+            description: First name of the external guest.
+          lastname:
+            type: string
+            example: Smith
+            description: Last name of the external guest.
+      RestrictedArea:
+        description: |
+          Restrict the viewing area to a specific zone. Specify the coordinates to determine
+          the viewable bounding box for this access token session.
+        required:
+          - x
+          - y
+          - width
+          - height
+        properties:
+          x:
+            type: integer
+            example: 220
+            description: X-axis position in pixels (reference is the left bottom corner).
+          y:
+            type: integer
+            example: 361
+            description: Y-axis position in pixels (reference is the left bottom corner).
+          width:
+            type: integer
+            example: 200
+            description: Width of the area in pixels.
+          height:
+            type: integer
+            example: 200
+            description: Height of the area in pixels.
+      properties:
+        proofId:
+          type: integer or list of intergers
+          example: 12362
+          description: |
+            The id(s) of the proof(s) the token gives access to. Use <span class="code">/projects/{id}/proofs</span>
+            to get the list of the proofs of the project and their id.
+        taskId:
+          type: integer
+          example: 718
+          description: The id of the task assigned to this access token session.
+        userId:
+          type: integer
+          example: 321
+          description: |
+            Specify the user that will be the owner of the annotations, comments and approvals made
+            using this access token. If none is given, the owner will be the invitor.
+        guest:
+          $ref: "#/components/requestBodies/NewProjectToken/Guest"
+        expireDate:
+          type: date string
+          example: 2019-04-15T09:00:00+02
+          description: The expiration date of the token.
+        languageId:
+          type: integer
+          example: 5
+          description: Language used to localize the Aproove display when using this access token.
+        roleId:
+          type: integer
+          example: 46
+          description: |
+            You can override the role of the user in this access token session. If not specified,
+            it will use the user’s default role in the project. If an external guest is specified,
+            a readonly access will be given.
+        pageZoomLevel:
+          type: integer
+          example: 1
+          default: -1
+          description: |
+            You can specify the zoom level to display when the user opens the project with the token
+            in an invitation context. By default, this value is set to -1. That means there is no zoom
+            at the opening.
+        pageX:
+          type: integer
+          example: 0
+          description: Determine the X position at the opening.
+        pageY:
+          type: integer
+          example: 0
+          description: Determine the Y position at the opening.
+        userOptions:
+          type: string
+          example: color:13311
+          description: |
+            Specify options such as prod view status, color… (format: "KEY1:KEYVALUE1 ;…")
+        defaultView:
+          type: boolean
+          example: true
+          description: |
+            ?? // TO BE COMPLETED
+        productionView:
+          type: boolean
+          example: false
+          description: If true, the token gives access to the production flat plan view.
+        comparisonView:
+          type: boolean
+          example: true
+          description: If true, the token gives access to the head to head comparison view.
+        bookView:
+          type: boolean
+          example: false
+          description: It true, the project is displayed in book mode view.
+        displayVersion:
+          type: boolean
+          example: true
+          description: If true, the token gives access to the previous versions.
+        lrPdfExport:
+          type: boolean
+          example: false
+          description: If true, the token gives access to the low resolution pdf export.
+        restrictedArea:
+          $ref: "#/components/requestBodies/NewProjectToken/RestrictedArea" 
+        sendEmail:
+          type: boolean
+          example: true
+          description: |
+            If true, an email containing the link to the project with the access token will be sent to the
+            user or guest.
+        msg:
+          type: string
+          example: Please annotate the proofs.
+          description: |
+            A message that will be displayed in a popup window at the opening of the project
+            with the token.
+
+    RefreshToken:
+      required:
+        - refreshToken
+        - userId
+      properties:
+        refreshToken:
+          type: string
+          description: The refresh token you got when you logged in.
+          example: ITQWNCt7Cum71NMgV15YzHXs8msIr1G6
+        userId:
+          type: integer
+          description: Your user id.
+          example: 363
+
+    UpdateProject:
+      properties:
+        name:
+          type: string
+          description: The name of the project
+          example: MBO Project
+        startDate:
+          type: datestring
+          description: The start date of the project, formatted as an [ISO 8601](https://www.iso.org/iso-8601-date-and-time-format.html) string
+          example: 2019-05-01T18:00:00Z
+        deadlineDate:
+          type: datestring
+          description: The due date of the project, formatted as an [ISO 8601](https://www.iso.org/iso-8601-date-and-time-format.html) string
+          example: 2019-08-01T08:00:00Z
+        
+
+  securitySchemes:
+    Bearer Authentication:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Provide your access token in the Authorization header
+            
